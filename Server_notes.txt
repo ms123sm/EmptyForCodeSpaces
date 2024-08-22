@@ -1,0 +1,160 @@
+1. socket
+2. bind
+3. listen
+4. accept/5. select
+6. recv
+7. send
+8. close
+
+
+socket: Create a new socket.
+bind: Bind the socket to a specific address and port (typically used by the server).
+listen: Set the socket to listen for incoming connection requests (server-side).
+accept: Accept an incoming connection request and create a new socket for the connection (server-side).
+select: (Optional) Use to monitor multiple sockets for read/write activity (usually for advanced scenarios, such as handling multiple clients).
+recv: Receive data from a connected socket (both client and server).
+send: Send data to a connected socket (both client and server).
+close: Close the socket when done.
+
+The somaxconn value sets the maximum number of connections that can be queued, and it affects all listening sockets.
+To find its value in your system, use:
+    cat /proc/sys/net/core/somaxconn
+
+The select function in C is used for monitoring multiple file descriptors to see if they are ready for I/O operations (such as reading or writing) or if there are any exceptional conditions pending. This allows you to perform non-blocking I/O and manage multiple connections in a single thread.
+    int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+
+nfds: The highest-numbered file descriptor plus one. This is used to specify the range of file descriptors to be checked. It is usually set to the highest file descriptor value in the fd_set plus one.
+
+readfds: A pointer to an fd_set structure that specifies the file descriptors to be checked for readability.
+
+writefds: A pointer to an fd_set structure that specifies the file descriptors to be checked for writability.
+
+exceptfds: A pointer to an fd_set structure that specifies the file descriptors to be checked for exceptional conditions.
+
+timeout: A pointer to a struct timeval that specifies the maximum amount of time to wait for an event. If NULL, select will block indefinitely until an event occurs.
+
+Key Functions for select
+
+    FD_ZERO(fd_set *set):
+        Clears the file descriptor set set. This initializes the set to be empty.
+        FD_ZERO(&my_fd_set);
+
+    FD_SET(int fd, fd_set *set):
+        Adds the file descriptor fd to the set set. This indicates that you want to monitor fd for the conditions specified (readability, writability, or exceptions).
+        FD_SET(my_socket, &my_fd_set);
+
+    FD_CLR(int fd, fd_set *set):
+        Removes the file descriptor fd from the set set. This indicates that you no longer want to monitor fd.
+        FD_CLR(my_socket, &my_fd_set);
+
+    FD_ISSET(int fd, fd_set *set):
+        Checks if the file descriptor fd is part of the set set. This is typically used after select returns to determine if a particular file descriptor is ready for the specified condition.
+        if (FD_ISSET(my_socket, &my_fd_set)) {
+            // my_socket is ready for reading/writing
+        }
+
+The fd_set and related macros/functions are part of the POSIX standard for managing file descriptors in I/O multiplexing, particularly with the select system call. Here's a detailed explanation of each:
+
+1. FD_ZERO
+Purpose:
+
+Initializes a file descriptor set to be empty. This means all file descriptors are initially excluded from the set.
+Usage:
+FD_ZERO(&set);
+&set is a pointer to an fd_set structure.
+After calling FD_ZERO, the file descriptor set set will be empty, meaning it contains no file descriptors.
+
+2. FD_SET
+Purpose:
+
+Adds a file descriptor to the file descriptor set. This indicates that you want to monitor this file descriptor for events.
+Usage:
+FD_SET(fd, &set);
+fd is the file descriptor you want to add to the set.
+&set is a pointer to an fd_set structure that will be modified to include fd.
+Example:
+FD_SET(STDIN_FILENO, &readfds); // Add stdin (fd 0) to the readfds set
+
+3. FD_CLR
+Purpose:
+
+Removes a file descriptor from the file descriptor set. This means you no longer want to monitor this file descriptor for events.
+Usage:
+FD_CLR(fd, &set);
+fd is the file descriptor you want to remove.
+&set is a pointer to an fd_set structure that will be modified to exclude fd.
+Example:
+FD_CLR(STDIN_FILENO, &readfds); // Remove stdin (fd 0) from the readfds set
+
+4. FD_ISSET
+Purpose:
+
+Checks if a file descriptor is part of the file descriptor set. This is used after a call to select to determine if a file descriptor is ready for the specified operation (read, write, etc.).
+Usage:
+if (FD_ISSET(fd, &set)) {
+    // fd is part of the set
+}
+fd is the file descriptor to check.
+&set is a pointer to an fd_set structure to be checked.
+Example:
+if (FD_ISSET(STDIN_FILENO, &readfds)) {
+    // stdin (fd 0) is ready for reading
+}
+
+Example Workflow
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/select.h>
+
+int main() {
+    fd_set readfds;
+    int retval;
+
+    // Initialize the file descriptor set
+    FD_ZERO(&readfds);
+    
+    // Add stdin to the set
+    FD_SET(STDIN_FILENO, &readfds);
+    
+    // Set the timeout for select
+    struct timeval timeout;
+    timeout.tv_sec = 5;  // 5 seconds
+    timeout.tv_usec = 0; // 0 microseconds
+
+    // Call select
+    retval = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+
+    if (retval == -1) {
+        perror("select error");
+        exit(1);
+    } else if (retval) {
+        // Check if stdin is ready for reading
+        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+            printf("stdin is ready for reading\n");
+        }
+    } else {
+        printf("No data within 5 seconds.\n");
+    }
+
+    return 0;
+}
+
+
+
+https://www.youtube.com/watch?v=CfEShMmsUus
+
+https://www.youtube.com/watch?v=Y6pFtgRdUts
+
+
+Using select()
+select() allows you to monitor multiple file descriptors to see if they are ready for reading, writing, or if there are exceptional conditions. When you call select(), you specify a set of file descriptors and select() will block until at least one of these descriptors becomes ready or a timeout occurs.
+
+Here’s how it fits into the picture:
+
+Setting Up: Before calling select(), you initialize a set of file descriptors and add the ones you want to monitor.
+Calling select(): When select() returns, it modifies the file descriptor sets to indicate which descriptors are ready for the requested operation (e.g., reading).
+Checking the Results: After select() returns, you can check which file descriptors are set to see which ones are ready. You can then safely call recv() or send() on these descriptors without blocking, because select() has already informed you that they are ready for the operation.
+
+https://github.com/artygo8/examRank06/blob/main/mini_serv.c
+
