@@ -158,3 +158,50 @@ Checking the Results: After select() returns, you can check which file descripto
 
 https://github.com/artygo8/examRank06/blob/main/mini_serv.c
 
+Blocking based on the select call:
+
+If you don't specify &read_fds, &write_fds, or &except_fds when calling select, the behavior of select will be affected based on which sets you provide. Here's how select behaves depending on the sets you include or exclude:
+Behavior of select Based on Provided Sets
+
+Specifying All Three Sets:
+If you provide &read_fds, &write_fds, and &except_fds to select, it will monitor all specified file descriptors for the conditions specified in each set.
+select will block until at least one file descriptor in any of these sets becomes ready.
+    fd_set read_fds, write_fds, except_fds;
+    // Initialize fd_set variables and add file descriptors
+    int result = select(max_fd + 1, &read_fds, &write_fds, &except_fds, NULL);
+Specifying Only read_fds:
+If you only specify &read_fds and pass NULL for write_fds and except_fds, select will only check for readability. It will block until one or more of the file descriptors in read_fds is ready for reading.
+In this case, select will not be concerned with file descriptors ready for writing or exceptional conditions.
+    fd_set read_fds;
+    // Initialize read_fds and add file descriptors
+    int result = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
+Specifying Only write_fds:
+If you only specify &write_fds and pass NULL for read_fds and except_fds, select will only check for writability. It will block until one or more of the file descriptors in write_fds is ready for writing.
+    fd_set write_fds;
+    // Initialize write_fds and add file descriptors
+    int result = select(max_fd + 1, NULL, &write_fds, NULL, NULL);
+Specifying NULL for All Sets:
+If you pass NULL for read_fds, write_fds, and except_fds, select will block indefinitely because there are no file descriptors to monitor. This is not a typical usage since it essentially makes select wait for any activity on file descriptors, which is effectively useless because no sets are provided for monitoring.
+    int result = select(0, NULL, NULL, NULL, NULL);
+
+Summary
+Blocking for Readiness:
+
+If you specify &read_fds and NULL for write_fds and except_fds, select will block until there is data available to read on one of the file descriptors in read_fds.
+Blocking for Writing:
+If you specify &write_fds and NULL for read_fds and except_fds, select will block until one of the file descriptors in write_fds is ready to be written to.
+Blocking for Exceptions:
+If you specify &except_fds and NULL for read_fds and write_fds, select will block until one of the file descriptors in except_fds has an exceptional condition.
+Blocking Indefinitely:
+If you pass NULL for all sets, select will not function properly and will block indefinitely without monitoring any file descriptors.
+In practice, you usually specify the sets that are relevant to your application’s needs. For a chat server, you typically focus on read_fds to handle incoming messages and may use write_fds if you need to handle non-blocking writes.
+
+EAGAIN:
+Non-Blocking Mode: If your socket is non-blocking and can't complete an operation, you’ll get EAGAIN.
+Use select: Instead of checking for EAGAIN yourself, use select to see when the socket is ready for reading or writing.
+Simplifies Handling: select simplifies your code by handling the readiness of the file descriptor, so you don’t need to worry about EAGAIN directly.
+In summary, EAGAIN is an error indicating a non-blocking operation can’t proceed right now. You handle this efficiently using select, which tells you when your socket or file is ready for operations, so you don’t need to handle EAGAIN directly in your code.
+
+
+
+

@@ -59,7 +59,7 @@ int main(int ac, char **argv) // This program will take as first argument the po
 		write(2, "Fatal error\n", 13); 
 		exit(1); 
 	}
-    else {printf("Socket created\n");}
+    // else {printf("Socket created\n");}
 	bzero(&servaddr, sizeof(servaddr)); 
     FD_SET(sockfd, &current_fds); //should this take the original fd set?
 
@@ -71,12 +71,12 @@ int main(int ac, char **argv) // This program will take as first argument the po
 		write(2, "Fatal error\n", 13); 
 		exit(1);  
 	} 
-	else {printf("Binding done\n");}
+	// else {printf("Binding done\n");}
 	if (listen(sockfd, SOMAXCONN) != 0) { //the max connections was set to = 10
 		write(2, "Fatal error\n", 13); 
 		exit(1); 
 	}
-    else {printf("Listening done\n");}
+    // else {printf("Listening done\n");}
 
     while(1)
     {
@@ -99,3 +99,12 @@ int main(int ac, char **argv) // This program will take as first argument the po
 }
 
 // use "nc localhost port_num" to test the code
+// Memory or fd leaks are forbidden
+
+// 1. socket
+// 2. bind
+// 3. listen
+// 4. accept/5. select
+// 6. recv
+// 7. send
+// 8. close
